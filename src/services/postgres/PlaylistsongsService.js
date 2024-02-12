@@ -8,7 +8,7 @@ class PlaylistSongsService {
     this._cacheService = cacheService;
   }
 
-  async addSongToPlaylist({ songId, playlistId }) {
+  async addPlaylistsong({ songId, playlistId }) {
     const id = `playlist_song-${nanoid(16)}`;
 
     const query = {
