@@ -1,71 +1,70 @@
-const { Pool } = require("pg");
-const { nanoid } = require("nanoid");
-const InvariantError = require("../../exceptions/InvariantError");
-const { mapDBToModel } = require("../../utils");
-const NotFoundError = require("../../exceptions/NotFoundError");
+const { nanoid } = require('nanoid');
+const { Pool } = require('pg');
+const InvariantError = require('../../exceptions/InvariantError');
 
-class PlaylistsongsService {
-    constructor() {
-        this._pool = new Pool();
+class PlaylistSongsService {
+  constructor(cacheService) {
+    this._pool = new Pool();
+    this._cacheService = cacheService;
+  }
+
+  async addSongToPlaylist({ songId, playlistId }) {
+    const id = `playlist_song-${nanoid(16)}`;
+
+    const query = {
+      text: 'INSERT INTO playlistsongs VALUES($1, $2, $3) RETURNING id',
+      values: [id, playlistId, songId],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rows.length) {
+      throw new InvariantError('Lagu gagal ditambahkan kedalam playlist');
     }
 
-    async addPlaylistsong(songId, playlistId) {
-        const id = `playlistsong-${nanoid(16)}`;
+    this._cacheService.delete(`playlistSongs:${playlistId}`);
+  }
 
-        const query = {
-            text: "INSERT INTO playlistsongs VALUES($1, $2, $3) RETURNING id",
-            values: [id, playlistId, songId],
-        };
+  async getSongsFromPlaylistByPlaylistId(playlistId) {
+    const cacheResult = await this._cacheService.get(`playlistSongs:${playlistId}`);
+    if (cacheResult) {
+      return cacheResult;
+    }
+    const query = {
+      text: `SELECT songs.id, songs.title, songs.performer
+          FROM playlistsongs
+          LEFT JOIN playlists
+          ON playlists.id = playlistsongs.playlist_id
+          LEFT JOIN songs
+          ON songs.id = playlistsongs.song_id
+          WHERE playlistsongs.playlist_id = $1`,
+      values: [playlistId],
+    };
 
-        const result = await this._pool.query(query);
+    const result = await this._pool.query(query);
 
-        if (!result.rows.length) {
-            throw new InvariantError("Lagu gagal ditambahkan");
-        }
-
-        return result.rows[0].id;
+    if (!result.rows) {
+      throw new InvariantError('Gagal mendapatkan lagu-lagu dari playlist');
     }
 
-    async getPlaylistsongById(id) {
-        const query = {
-            text: `SELECT playlistsongs.*, songs.title, songs.performer FROM playlistsongs LEFT JOIN songs ON songs.id = playlistsongs.song_id 
-      WHERE playlistsongs.playlist_id = $1`,
-            values: [id],
-        };
-        const result = await this._pool.query(query);
+    await this._cacheService.set(`playlistSongs:${playlistId}`, JSON.stringify(result.rows));
+    return result.rows;
+  }
 
-        if (!result.rows.length) {
-            throw new NotFoundError("Playlist tidak ditemukan");
-        }
+  async deleteSongFromPlaylist({ playlistId, songId }) {
+    const query = {
+      text: 'DELETE FROM playlistsongs WHERE playlist_id=$1 AND song_id=$2 returning id',
+      values: [playlistId, songId],
+    };
 
-        return result.rows.map(mapDBToModel);
+    const result = await this._pool.query(query);
+
+    if (!result.rows.length) {
+      throw new InvariantError('Lagu gagal dihapus dari playlist');
     }
 
-    async deletePlaylistsong(songId, playlistId) {
-        const query = {
-            text: "DELETE FROM playlistsongs WHERE song_id = $1 AND playlist_id = $2 RETURNING id",
-            values: [songId, playlistId],
-        };
-
-        const result = await this._pool.query(query);
-
-        if (!result.rows.length) {
-            throw new InvariantError("Lagu gagal dihapus");
-        }
-    }
-
-    async verifyCollaborator(songId, playlistId) {
-        const query = {
-            text: "SELECT * FROM playlistsongs WHERE song_id = $1 AND playlist_id = $2",
-            values: [songId, playlistId],
-        };
-
-        const result = await this._pool.query(query);
-
-        if (!result.rows.length) {
-            throw new InvariantError("Lagu gagal diverifikasi");
-        }
-    }
+    await this._cacheService.delete(`playlistSongs:${playlistId}`);
+  }
 }
 
-module.exports = PlaylistsongsService;
+module.exports = PlaylistSongsService;
