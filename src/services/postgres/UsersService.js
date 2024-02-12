@@ -10,7 +10,7 @@ class UsersService {
     this._pool = new Pool();
   }
 
-  async verifyUserCredential(username, password) {
+  async verifyUserCredential(username, password, fullname) {
     const query = {
       text: 'SELECT id, password FROM users WHERE username = $1',
       values: [username],
@@ -76,6 +76,36 @@ class UsersService {
     }
 
     return result.rows[0];
+  }
+
+  async verifyUserCredential(username, password) {
+    const query = {
+      text: "SELECT id, password FROM users WHERE username = $1",
+      values: [username],
+    };
+    const result = await this._pool.query(query);
+
+    if (!result.rows.length) {
+      throw new AuthenticationError("Kredensial yang Anda berikan salah");
+    }
+
+    const { id, password: hashedPassword } = result.rows[0];
+
+    const match = await bcrypt.compare(password, hashedPassword);
+
+    if (!match) {
+      throw new AuthenticationError("Kredensial yang Anda berikan salah");
+    }
+    return id;
+  }
+
+  async getUsersByUsername(username) {
+    const query = {
+      text: "SELECT id, username, fullname FROM users WHERE username LIKE $1",
+      values: [`%${username}%`],
+    };
+    const result = await this._pool.query(query);
+    return result.rows;
   }
 }
 

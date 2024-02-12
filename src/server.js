@@ -5,9 +5,9 @@ const Jwt = require('@hapi/jwt');
 const ClientError = require("./exceptions/ClientError");
 
 //Notes
-const notes = require("./api/notes");
-const NotesService = require("./services/postgres/NotesService");
-const NotesValidator = require("./validator/notes");
+//const notes = require("./api/notes");
+//const NotesService = require("./services/postgres/NotesService");
+//const NotesValidator = require("./validator/notes");
 
 // users
 const users = require("./api/users");
@@ -25,11 +25,34 @@ const collaborations = require('./api/collaborations');
 const CollaborationsService = require('./services/postgres/CollaborationsService');
 const CollaborationsValidator = require('./validator/collaborations');
 
+// songs
+const songs = require("./api/songs");
+const SongsService = require("./services/postgres/SongsService");
+const SongsValidator = require("./validator/songs");
+
+// albums
+//const albums = require("./api/albums");
+//const albumsService = require('./services/postgres/AlbumsService');
+//const AlbumsValidator = require('./validator/albums');
+
+// playlists
+const playlists = require("./api/playlists");
+const PlaylistsService = require("./services/postgres/PlaylistsService");
+const PlaylistsValidator = require("./validator/playlists");
+
+// playlistsongs
+const playlistsongs = require("./api/playlistsongs");
+const PlaylistsongsService = require("./services/postgres/PlaylistsongsService");
+const PlaylistsongsValidator = require("./validator/playlistsongs");
+
 const init = async () => {
   const collaborationsService = new CollaborationsService();
-  const notesService = new NotesService(collaborationsService);
+  //const notesService = new NotesService(collaborationsService);
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
+  const songsService = new SongsService();
+  const playlistsService = new PlaylistsService(collaborationsService);
+  const playlistsongsService = new PlaylistsongsService();
 
   const server = Hapi.server({
     port: 3000,
@@ -51,7 +74,7 @@ const init = async () => {
   ]);
 
   // mendefinisikan strategy autentikasi jwt
-  server.auth.strategy('notesapp_jwt', 'jwt', {
+  server.auth.strategy('playlistsapp_jwt', 'jwt', {
     keys: [process.env.ACCESS_TOKEN_KEY],
     verify: {
       aud: false,
@@ -70,12 +93,19 @@ const init = async () => {
 
   await server.register([
     {
-      plugin: notes,
+      plugin: songs,
       options: {
-        service: notesService,
-        validator: NotesValidator,
+        service: songsService,
+        validator: SongsValidator,
       },
     },
+    //{
+      //plugin: albums,
+      //options: {
+        //service: albumsService,
+        //validator: AlbumsValidator,
+      //},
+    //},
     {
       plugin: users,
       options: {
@@ -96,8 +126,24 @@ const init = async () => {
       plugin: collaborations,
       options: {
         collaborationsService,
-        notesService,
+        playlistsService,
         validator: CollaborationsValidator,
+      },
+    },
+    {
+      plugin: playlists,
+      options: {
+        playlistsService,
+        usersService,
+        validator: PlaylistsValidator,
+      },
+    },
+    {
+      plugin: playlistsongs,
+      options: {
+        playlistsongsService,
+        playlistsService,
+        validator: PlaylistsongsValidator,
       },
     },
   ]);
