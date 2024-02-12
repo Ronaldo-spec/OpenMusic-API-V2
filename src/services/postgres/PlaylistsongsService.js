@@ -10,25 +10,20 @@ class PlaylistsongsService {
   }
 
   async addPlaylistsong(songId, playlistId) {
-     const songQuery = {
-            text: 'SELECT * FROM songs WHERE id = $1',
-            values: [songId],
-        };
+    const id = `playlistsong-${nanoid(16)}`;
 
-        const songResult = await this._pool.query(songQuery);
+    const query = {
+      text: "INSERT INTO playlistsongs VALUES($1, $2, $3) RETURNING id",
+      values: [id, playlistId, songId],
+    };
 
-        if (!songResult.rowCount) {
-            throw new NotFoundError('Lagu gagal ditambahkan');
-        }
+    const result = await this._pool.query(query);
 
-        const id = `playlist-song-${nanoid(16)}`;
+    if (!result.rows.length) {
+      throw new InvariantError("Lagu gagal ditambahkan");
+    }
 
-        const playlistQuery = {
-            text: 'INSERT INTO playlist_songs VALUES($1, $2, $3) RETURNING id',
-            values: [id, playlistId, songId],
-        };
-
-        await this._pool.query(playlistQuery);
+    return result.rows[0].id;
   }
 
   async getPlaylistsongById(id) {
