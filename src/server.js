@@ -1,24 +1,19 @@
-require("dotenv").config();
+require('dotenv').config();
 
-const Hapi = require("@hapi/hapi");
+const Hapi = require('@hapi/hapi');
 const Jwt = require('@hapi/jwt');
-const ClientError = require("./exceptions/ClientError");
-
-//Notes
-//const notes = require("./api/notes");
-//const NotesService = require("./services/postgres/NotesService");
-//const NotesValidator = require("./validator/notes");
+const ClientError = require('./exceptions/ClientError');
 
 // users
-const users = require("./api/users");
-const UsersService = require("./services/postgres/UsersService");
-const UsersValidator = require("./validator/users");
+const users = require('./api/users');
+const UsersService = require('./services/postgres/UsersService');
+const UsersValidator = require('./validator/users');
 
 // authentications
-const authentications = require("./api/authentications");
-const AuthenticationsService = require("./services/postgres/AuthenticationsService");
-const TokenManager = require("./tokenize/TokenManager");
-const AuthenticationsValidator = require("./validator/authentications");
+const authentications = require('./api/authentications');
+const AuthenticationsService = require('./services/postgres/AuthenticationsService');
+const TokenManager = require('./tokenize/TokenManager');
+const AuthenticationsValidator = require('./validator/authentications');
 
 // collaborations
 const collaborations = require('./api/collaborations');
@@ -26,57 +21,52 @@ const CollaborationsService = require('./services/postgres/CollaborationsService
 const CollaborationsValidator = require('./validator/collaborations');
 
 // songs
-const songs = require("./api/songs");
-const SongsService = require("./services/postgres/SongsService");
-const SongsValidator = require("./validator/songs");
+const songs = require('./api/songs');
+const SongsService = require('./services/postgres/SongsService');
+const SongsValidator = require('./validator/songs');
 
-//albums
-const albums = require("./api/albums");
+// albums
+const albums = require('./api/albums');
 const AlbumsService = require('./services/postgres/AlbumsService');
 const AlbumsValidator = require('./validator/albums');
 
 // playlists
-const playlists = require("./api/playlists");
-const PlaylistsService = require("./services/postgres/PlaylistsService");
-const PlaylistsValidator = require("./validator/playlists");
+const playlists = require('./api/playlists');
+const PlaylistsService = require('./services/postgres/PlaylistsService');
+const PlaylistsValidator = require('./validator/playlists');
 
-// playlistsongs
-const playlistsongs = require("./api/playlistsongs");
-const PlaylistsongsService = require("./services/postgres/PlaylistsongsService");
-const PlaylistsongsValidator = require("./validator/playlistsongs");
+// playlist songs
+const playlistsongs = require('./api/playlistsongs');
+const PlaylistsongsService = require('./services/postgres/PlaylistsongsService');
+const PlaylistsongsValidator = require('./validator/playlistsongs');
 
 const init = async () => {
   const collaborationsService = new CollaborationsService();
-  //const notesService = new NotesService(collaborationsService);
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
   const songsService = new SongsService();
-  const albumsService = new AlbumsService(); 
+  const albumsService = new AlbumsService();
   const playlistsService = new PlaylistsService(collaborationsService);
   const playlistsongsService = new PlaylistsongsService();
 
   const server = Hapi.server({
-    port: 3000,
-    host: process.env.NODE_ENV !== "production" ? "localhost" : "0.0.0.0",
-    port: process.env.PORT,
-    host: process.env.HOST,
+    port: process.env.PORT || 3000,
+    host: process.env.HOST || 'localhost',
     routes: {
       cors: {
-        origin: ["*"],
+        origin: ['*'],
       },
     },
   });
 
-  // registrasi plugin eksternal
   await server.register([
     {
       plugin: Jwt,
     },
   ]);
 
-  // mendefinisikan strategy autentikasi jwt
   server.auth.strategy('playlistsapp_jwt', 'jwt', {
-    keys: [process.env.ACCESS_TOKEN_KEY],
+    keys: process.env.ACCESS_TOKEN_KEY,
     verify: {
       aud: false,
       iss: false,
@@ -90,7 +80,6 @@ const init = async () => {
       },
     }),
   });
-  console.log(process.env.PORT);
 
   await server.register([
     {
@@ -149,14 +138,12 @@ const init = async () => {
     },
   ]);
 
-  server.ext("onPreResponse", (request, h) => {
-    // mendapatkan konteks response dari request
+  server.ext('onPreResponse', (request, h) => {
     const { response } = request;
 
-    // penanganan client error secara internal.
     if (response instanceof ClientError) {
       const newResponse = h.response({
-        status: "fail",
+        status: 'fail',
         message: response.message,
       });
       newResponse.code(response.statusCode);
