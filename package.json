@@ -1,7 +1,7 @@
 {
-  "name": "notes-app-back-end",
+  "name": "openmusic-api-v2",
   "version": "1.0.0",
-  "description": "",
+  "description": "RESTful music catalog and playlist API built with Hapi.js, PostgreSQL, and JWT authentication.",
   "main": "index.js",
   "scripts": {
     "start:prod": "NODE_ENV=production node ./src/server.js",
@@ -9,8 +9,14 @@
     "lint": "eslint ./src",
     "migrate": "node-pg-migrate"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "nodejs",
+    "hapi",
+    "postgresql",
+    "jwt",
+    "rest-api"
+  ],
+  "author": "Ronaldo Firmansyah",
   "license": "ISC",
   "devDependencies": {
     "eslint": "^8.52.0",
